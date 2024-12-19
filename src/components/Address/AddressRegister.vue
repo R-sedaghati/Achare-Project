@@ -169,7 +169,12 @@
           style="color: #00bfa6; border: 4px solid #00bfa6"
           type="button"
         >
-          <span class="fw-bold fs-5">مشاهده اطلاعات</span>
+          <router-link
+            to="/"
+            class="fw-bold fs-5 text-decoration-none"
+            style="color: #00bfa6"
+            >مشاهده اطلاعات</router-link
+          >
         </button>
       </div>
     </div>
@@ -180,6 +185,7 @@
 import { reactive, ref, nextTick, onMounted } from "vue";
 import L from "leaflet";
 
+// Form data and state variables
 const form = reactive({
   first_name: "",
   last_name: "",
@@ -197,6 +203,7 @@ const showNotif = ref(false);
 const selectedLocation = ref("No location selected");
 let mapInstance = null;
 
+// Form validation function
 const validate = () => {
   errors.first_name =
     form.first_name.length < 3 ? "نام باید حداقل ۳ حرف باشد" : "";
@@ -217,6 +224,7 @@ const validate = () => {
     form.address.length < 10 ? "آدرس باید حداقل ۱۰ حرف باشد" : "";
 };
 
+// Handle address form submission and switch to map
 const handleSubmit = async () => {
   validate();
 
@@ -224,18 +232,16 @@ const handleSubmit = async () => {
     return;
   }
 
-  // Proceed to map selection
   showMap.value = true;
 
-  // Wait for the DOM to update and initialize the map
   await nextTick();
   initializeMap();
 };
 
+// Initialize map with Leaflet
 const initializeMap = () => {
-  if (mapInstance) return; // Prevent re-initialization
+  if (mapInstance) return;
 
-  // Override the default marker icons
   L.Marker.prototype.options.icon = L.icon({
     iconUrl:
       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
@@ -247,18 +253,15 @@ const initializeMap = () => {
     shadowSize: [41, 41],
   });
 
-  // Initialize map with default view (Tehran)
   mapInstance = L.map("map").setView([35.6997, 51.338], 18);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
   }).addTo(mapInstance);
 
-  // Add click event to capture lat/lng
   mapInstance.on("click", (e) => {
     const { lat, lng } = e.latlng;
     selectedLocation.value = { lat: lat.toFixed(6), lng: lng.toFixed(6) };
 
-    // Update marker position
     if (mapInstance.marker) {
       mapInstance.removeLayer(mapInstance.marker);
     }
@@ -266,7 +269,6 @@ const initializeMap = () => {
       mapInstance
     );
 
-    // Update lat/lng on marker drag
     mapInstance.marker.on("dragend", () => {
       const position = mapInstance.marker.getLatLng();
       selectedLocation.value = {
@@ -277,6 +279,7 @@ const initializeMap = () => {
   });
 };
 
+// Submit form data to the API
 const handleSubmitToAPI = async () => {
   if (!selectedLocation.value) {
     alert("لطفاً موقعیت مکانی خود را انتخاب کنید");
@@ -287,7 +290,7 @@ const handleSubmitToAPI = async () => {
     first_name: form.first_name,
     last_name: form.last_name,
     coordinate_mobile: form.coordinate_mobile,
-    coordinate_phone_number: form.coordinate_phone_number || null,
+    coordinate_phone_number: form.coordinate_phone_number || "",
     address: form.address,
     gender: form.gender,
     region: form.region,
@@ -324,9 +327,11 @@ const handleSubmitToAPI = async () => {
     loading.value = false;
   }
 };
-// Initialize the map when the component is mounted
+
 onMounted(() => {
-  initializeMap();
+  if (showMap.value) {
+    initializeMap();
+  }
 });
 </script>
 

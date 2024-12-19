@@ -7,19 +7,20 @@
             <li class="nav-item">
               <router-link
                 class="nav-link fw-bold fs-5"
-                style="color: #00bfa6"
                 aria-current="page"
                 to="/"
-                >مشاهده‌آدرس‌ها</router-link
               >
+                مشاهده‌آدرس‌ها
+              </router-link>
             </li>
             <li class="nav-item">
               <router-link
                 class="nav-link fw-bold fs-5 me-3"
                 aria-current="page"
                 to="/register"
-                >ثبت‌آدرس</router-link
               >
+                ثبت‌آدرس
+              </router-link>
             </li>
           </ul>
           <img
@@ -38,3 +39,10 @@ export default {
   name: "AppHeader",
 };
 </script>
+
+<style scoped>
+/* Apply the custom active link color */
+.router-link-active {
+  color: #00bfa6 !important;
+}
+</style>
