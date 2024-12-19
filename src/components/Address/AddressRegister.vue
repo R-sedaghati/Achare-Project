@@ -91,7 +91,7 @@
                 class="form-check-input"
                 type="radio"
                 v-model="form.gender"
-                value="male"
+                value="female"
                 name="flexRadioDefault"
                 id="female"
               />
@@ -102,12 +102,12 @@
                 class="form-check-input"
                 type="radio"
                 v-model="form.gender"
-                value="female"
+                value="male"
                 name="flexRadioDefault"
-                id="'male'"
+                id="male"
                 checked
               />
-              <label class="form-check-label" for="'male'"> آقا </label>
+              <label class="form-check-label" for="male"> آقا </label>
             </div>
           </div>
         </form>
@@ -115,16 +115,15 @@
     </template>
     <template v-if="showMap">
       <p class="fs-2 ps-4 pt-3 pt-md-5 text-center">انتخاب آدرس</p>
-      <div class="container bg-white hy-auto mt-4 mt-md-5">
-        <div class="mt-5">
-          <h5 class="text-center">لطفاً موقعیت خود را انتخاب کنید:</h5>
-          <div id="map" style="height: 400px; width: 100%"></div>
-          <p class="mt-3">مختصات: {{ selectedLocation }}</p>
+      <div class="container bg-white hy-auto mt-3 mt-md-2 p-0">
+        <div>
+          <h5 class="text-center py-4">لطفاً موقعیت خود را انتخاب کنید:</h5>
+          <div id="map" style="height: 450px; width: 100%"></div>
         </div>
       </div>
     </template>
   </div>
-  <div>
+  <div v-if="!showMap">
     <div class="col-12 d-grid pt-4 w-50 mx-auto mx-md-auto">
       <button
         @click="handleSubmit"
@@ -132,6 +131,19 @@
         style="background-color: #00bfa6"
       >
         ثبت و ادامه
+        <div v-if="loading" class="spinner-border spinner-border-sm ms-2"></div>
+      </button>
+    </div>
+  </div>
+  <div v-if="showMap">
+    <div class="col-12 d-grid pt-4 w-50 mx-auto mx-md-auto">
+      <button
+        @click="handleSubmitToAPI"
+        class="btn text-white p-2"
+        style="background-color: #00bfa6"
+      >
+        ثبت و ادامه
+        <div v-if="loading" class="spinner-border spinner-border-sm ms-2"></div>
       </button>
     </div>
   </div>
@@ -147,10 +159,12 @@ const form = reactive({
   coordinate_mobile: "",
   coordinate_phone_number: "",
   address: "",
-  gender: "",
+  gender: "male",
+  region: "1",
 });
 
 const errors = reactive({});
+const loading = ref(false);
 const showMap = ref(false);
 const selectedLocation = ref("No location selected");
 let mapInstance = null;
@@ -175,41 +189,48 @@ const validate = () => {
     form.address.length < 10 ? "آدرس باید حداقل ۱۰ حرف باشد" : "";
 };
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   validate();
-  initializeMap();
 
-  if (!Object.values(errors).some((error) => error)) {
-    alert("فرم با موفقیت ارسال شد!");
-    showMap.value = true;
-    initializeMap();
+  if (Object.values(errors).some((error) => error)) {
+    return;
   }
+
+  // Proceed to map selection
+  showMap.value = true;
+
+  // Wait for the DOM to update and initialize the map
+  await nextTick();
+  initializeMap();
 };
 
-const initializeMap = async () => {
-  await nextTick(); // Ensure the DOM is updated before initializing the map
+const initializeMap = () => {
+  if (mapInstance) return; // Prevent re-initialization
 
-  if (mapInstance) {
-    console.log("Map is already initialized.");
-    return; // Exit if the map instance already exists
-  }
+  // Override the default marker icons
+  L.Marker.prototype.options.icon = L.icon({
+    iconUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    shadowSize: [41, 41],
+  });
 
-  // Initialize the map with default coordinates (Tehran)
+  // Initialize map with default view (Tehran)
   mapInstance = L.map("map").setView([35.6997, 51.338], 18);
-
-  // Add the OpenStreetMap tile layer
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
   }).addTo(mapInstance);
 
-  // Add click event listener to the map
+  // Add click event to capture lat/lng
   mapInstance.on("click", (e) => {
-    const { lat, lng } = e.latlng; // Get latitude and longitude
-    selectedLocation.value = `Latitude: ${lat.toFixed(
-      6
-    )}, Longitude: ${lng.toFixed(6)}`;
+    const { lat, lng } = e.latlng;
+    selectedLocation.value = { lat: lat.toFixed(6), lng: lng.toFixed(6) };
 
-    // Remove existing marker if present and add a new one
+    // Update marker position
     if (mapInstance.marker) {
       mapInstance.removeLayer(mapInstance.marker);
     }
@@ -217,16 +238,64 @@ const initializeMap = async () => {
       mapInstance
     );
 
-    // Update coordinates on marker drag
+    // Update lat/lng on marker drag
     mapInstance.marker.on("dragend", () => {
       const position = mapInstance.marker.getLatLng();
-      selectedLocation.value = `Latitude: ${position.lat.toFixed(
-        6
-      )}, Longitude: ${position.lng.toFixed(6)}`;
+      selectedLocation.value = {
+        lat: position.lat.toFixed(6),
+        lng: position.lng.toFixed(6),
+      };
     });
   });
 };
 
+const handleSubmitToAPI = async () => {
+  if (!selectedLocation.value) {
+    alert("لطفاً موقعیت مکانی خود را انتخاب کنید");
+    return;
+  }
+
+  const finalData = {
+    first_name: form.first_name,
+    last_name: form.last_name,
+    coordinate_mobile: form.coordinate_mobile,
+    coordinate_phone_number: form.coordinate_phone_number || null,
+    address: form.address,
+    gender: form.gender,
+    region: form.region,
+    lat: selectedLocation.value.lat,
+    lng: selectedLocation.value.lng,
+  };
+
+  try {
+    loading.value = true;
+    const response = await fetch(
+      "https://stage.achareh.ir/api/karfarmas/address",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Basic MDk4MjIyMjIyMjI6U2FuYTEyMzQ1Njc4",
+        },
+        body: JSON.stringify(finalData),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "خطا در ارسال اطلاعات");
+    }
+
+    const responseData = await response.json();
+    alert("اطلاعات با موفقیت ارسال شد!");
+    console.log("Response from API:", responseData);
+  } catch (error) {
+    alert(`خطا: ${error.message}`);
+    console.error(error);
+  } finally {
+    loading.value = false;
+  }
+};
 // Initialize the map when the component is mounted
 onMounted(() => {
   initializeMap();
