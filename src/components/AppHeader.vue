@@ -9,7 +9,7 @@
                 class="nav-link fw-bold fs-5"
                 style="color: #00bfa6"
                 aria-current="page"
-                to="#"
+                to="/"
                 >مشاهده‌آدرس‌ها</router-link
               >
             </li>
@@ -17,7 +17,7 @@
               <router-link
                 class="nav-link fw-bold fs-5 me-3"
                 aria-current="page"
-                to="#"
+                to="/register"
                 >ثبت‌آدرس</router-link
               >
             </li>
